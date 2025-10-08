@@ -1,0 +1,27 @@
+{
+  "name": "order-management-api",
+  "version": "1.0.0",
+  "description": "Order Management System API with SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "api",
+    "order",
+    "management",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^9.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-basic-auth": "^1.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
