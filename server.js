@@ -227,12 +227,12 @@ app.get('/api/parts/:partId', (req, res) => {
 // Get prices for multiple parts by customer and company codes
 app.post('/api/prices/batch', (req, res) => {
   try {
-    const { customerCode, companyId, items } = req.body;
+    const { ERPId, companyId, items } = req.body;
 
     // Validate request
-    if (!customerCode || !companyId || !items || !Array.isArray(items)) {
+    if (!ERPId || !companyId || !items || !Array.isArray(items)) {
       return res.status(400).json({ 
-        error: 'Invalid request. Required: customerCode, companyId, and items array' 
+        error: 'Invalid request. Required: ERPId, companyId, and items array' 
       });
     }
 
@@ -257,7 +257,8 @@ app.post('/api/prices/batch', (req, res) => {
       // First, try to find a customer-specific mapping
       const mappingStmt = db.prepare(`
         SELECT 
-          pm.customer_code as partCode,
+          p.internal_code as partCode,
+          pm.customer_code as customerCode,
           COALESCE(pm.price_override, p.base_price) as price,
           p.description
         FROM PartMapping pm
@@ -272,12 +273,15 @@ app.post('/api/prices/batch', (req, res) => {
         const partStmt = db.prepare(`
           SELECT 
             p.internal_code as partCode,
+            pm.customer_code as customerCode,
             p.base_price as price,
             p.description
           FROM Part p
-          WHERE p.internal_code = ?
+          JOIN PartMapping pm
+            ON p.id = pm.part_id
+           WHERE p.internal_code = ? and pm.customer_id = ?
         `);
-        priceInfo = partStmt.get(partCode);
+        priceInfo = partStmt.get(partCode, companyId);
       }
 
       if (priceInfo) {
@@ -291,7 +295,8 @@ app.post('/api/prices/batch', (req, res) => {
         }
 
         prices.push({
-          partCode: priceInfo.partCode,
+          internalCode: priceInfo.partCode,
+          customerCode: priceInfo.customerCode,
           unit_price: parseFloat(finalPrice.toFixed(2)), // Round to 4 decimal places
           total_price: parseFloat(finalPrice.toFixed(2)) * quantity,
           description: priceInfo.description
