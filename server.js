@@ -224,6 +224,96 @@ app.get('/api/parts/:partId', (req, res) => {
   }
 });
 
+// Get prices for multiple parts by customer and company codes
+app.post('/api/prices/batch', (req, res) => {
+  try {
+    const { customerCode, companyId, items } = req.body;
+
+    // Validate request
+    if (!customerCode || !companyId || !items || !Array.isArray(items)) {
+      return res.status(400).json({ 
+        error: 'Invalid request. Required: customerCode, companyId, and items array' 
+      });
+    }
+
+    // Get customer ID from code
+    const customerStmt = db.prepare(`
+      SELECT id FROM Customer WHERE id = ?
+    `);
+    const customer = customerStmt.get(companyId);
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const prices = [];
+
+    // Process each item
+    for (const item of items) {
+      const { partCode, quantity } = item;
+
+      if (!partCode || !quantity) continue;
+
+      // First, try to find a customer-specific mapping
+      const mappingStmt = db.prepare(`
+        SELECT 
+          pm.customer_code as partCode,
+          COALESCE(pm.price_override, p.base_price) as price,
+          p.description
+        FROM PartMapping pm
+        JOIN Part p ON pm.part_id = p.id
+        WHERE pm.customer_code = ? 
+          AND pm.customer_id = ?
+      `);
+      let priceInfo = mappingStmt.get(partCode, companyId);
+
+      // If no mapping found, try to find by internal code
+      if (!priceInfo) {
+        const partStmt = db.prepare(`
+          SELECT 
+            p.internal_code as partCode,
+            p.base_price as price,
+            p.description
+          FROM Part p
+          WHERE p.internal_code = ?
+        `);
+        priceInfo = partStmt.get(partCode);
+      }
+
+      if (priceInfo) {
+        let finalPrice = priceInfo.price;
+        
+        // Apply progressive discount: 0.01% for every 10 items
+        if (quantity >= 10) {
+          const discountTiers = Math.floor(quantity / 10);
+          const discountPercentage = discountTiers * 0.0001; // 0.01% = 0.0001
+          finalPrice = priceInfo.price * (1 - discountPercentage);
+        }
+
+        prices.push({
+          partCode: priceInfo.partCode,
+          unit_price: parseFloat(finalPrice.toFixed(2)), // Round to 4 decimal places
+          total_price: parseFloat(finalPrice.toFixed(2)) * quantity,
+          description: priceInfo.description
+        });
+      } else {
+        // Optionally include items not found
+        prices.push({
+          partCode: partCode,
+          price: null,
+          description: null,
+          error: 'Part not found'
+        });
+      }
+    }
+
+    res.json({ prices });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch prices' });
+  }
+});
+
 // Update part price
 app.patch('/api/parts/:partId/price', (req, res) => {
   try {
