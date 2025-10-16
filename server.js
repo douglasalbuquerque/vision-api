@@ -529,6 +529,192 @@ app.get('/api/orders/:orderId', (req, res) => {
   }
 });
 
+// ============================================
+// COUNTRIES AND STATES SERVICE
+// ============================================
+
+// In-memory database with countries and states
+const countriesData = [
+  {
+    id: 1,
+    code: 'US',
+    name: 'Estados Unidos',
+    name_en: 'United States'
+  },
+  {
+    id: 2,
+    code: 'CA',
+    name: 'Canadá',
+    name_en: 'Canada'
+  },
+  {
+    id: 3,
+    code: 'MX',
+    name: 'México',
+    name_en: 'Mexico'
+  },
+  {
+    id: 4,
+    code: 'AR',
+    name: 'Argentina',
+    name_en: 'Argentina'
+  },
+  {
+    id: 5,
+    code: 'CL',
+    name: 'Chile',
+    name_en: 'Chile'
+  },
+  {
+    id: 6,
+    code: 'CO',
+    name: 'Colômbia',
+    name_en: 'Colombia'
+  },
+  {
+    id: 7,
+    code: 'PE',
+    name: 'Peru',
+    name_en: 'Peru'
+  }
+];
+
+const statesData = [
+  // Estados Unidos - Todos os 50 estados
+  { id: 1, ISO: 'US', code: 'AL', name: 'Alabama', capital: 'Montgomery' },
+  { id: 2, ISO: 'US', code: 'AK', name: 'Alaska', capital: 'Juneau' },
+  { id: 3, ISO: 'US', code: 'AZ', name: 'Arizona', capital: 'Phoenix' },
+  { id: 4, ISO: 'US', code: 'AR', name: 'Arkansas', capital: 'Little Rock' },
+  { id: 5, ISO: 'US', code: 'CA', name: 'California', capital: 'Sacramento' },
+  { id: 6, ISO: 'US', code: 'CO', name: 'Colorado', capital: 'Denver' },
+  { id: 7, ISO: 'US', code: 'CT', name: 'Connecticut', capital: 'Hartford' },
+  { id: 8, ISO: 'US', code: 'DE', name: 'Delaware', capital: 'Dover' },
+  { id: 9, ISO: 'US', code: 'FL', name: 'Florida', capital: 'Tallahassee' },
+  { id: 10, ISO: 'US', code: 'GA', name: 'Georgia', capital: 'Atlanta' },
+  { id: 11, ISO: 'US', code: 'HI', name: 'Hawaii', capital: 'Honolulu' },
+  { id: 12, ISO: 'US', code: 'ID', name: 'Idaho', capital: 'Boise' },
+  { id: 13, ISO: 'US', code: 'IL', name: 'Illinois', capital: 'Springfield' },
+  { id: 14, ISO: 'US', code: 'IN', name: 'Indiana', capital: 'Indianapolis' },
+  { id: 15, ISO: 'US', code: 'IA', name: 'Iowa', capital: 'Des Moines' },
+  { id: 16, ISO: 'US', code: 'KS', name: 'Kansas', capital: 'Topeka' },
+  { id: 17, ISO: 'US', code: 'KY', name: 'Kentucky', capital: 'Frankfort' },
+  { id: 18, ISO: 'US', code: 'LA', name: 'Louisiana', capital: 'Baton Rouge' },
+  { id: 19, ISO: 'US', code: 'ME', name: 'Maine', capital: 'Augusta' },
+  { id: 20, ISO: 'US', code: 'MD', name: 'Maryland', capital: 'Annapolis' },
+  { id: 21, ISO: 'US', code: 'MA', name: 'Massachusetts', capital: 'Boston' },
+  { id: 22, ISO: 'US', code: 'MI', name: 'Michigan', capital: 'Lansing' },
+  { id: 23, ISO: 'US', code: 'MN', name: 'Minnesota', capital: 'Saint Paul' },
+  { id: 24, ISO: 'US', code: 'MS', name: 'Mississippi', capital: 'Jackson' },
+  { id: 25, ISO: 'US', code: 'MO', name: 'Missouri', capital: 'Jefferson City' },
+  { id: 26, ISO: 'US', code: 'MT', name: 'Montana', capital: 'Helena' },
+  { id: 27, ISO: 'US', code: 'NE', name: 'Nebraska', capital: 'Lincoln' },
+  { id: 28, ISO: 'US', code: 'NV', name: 'Nevada', capital: 'Carson City' },
+  { id: 29, ISO: 'US', code: 'NH', name: 'New Hampshire', capital: 'Concord' },
+  { id: 30, ISO: 'US', code: 'NJ', name: 'New Jersey', capital: 'Trenton' },
+  { id: 31, ISO: 'US', code: 'NM', name: 'New Mexico', capital: 'Santa Fe' },
+  { id: 32, ISO: 'US', code: 'NY', name: 'New York', capital: 'Albany' },
+  { id: 33, ISO: 'US', code: 'NC', name: 'North Carolina', capital: 'Raleigh' },
+  { id: 34, ISO: 'US', code: 'ND', name: 'North Dakota', capital: 'Bismarck' },
+  { id: 35, ISO: 'US', code: 'OH', name: 'Ohio', capital: 'Columbus' },
+  { id: 36, ISO: 'US', code: 'OK', name: 'Oklahoma', capital: 'Oklahoma City' },
+  { id: 37, ISO: 'US', code: 'OR', name: 'Oregon', capital: 'Salem' },
+  { id: 38, ISO: 'US', code: 'PA', name: 'Pennsylvania', capital: 'Harrisburg' },
+  { id: 39, ISO: 'US', code: 'RI', name: 'Rhode Island', capital: 'Providence' },
+  { id: 40, ISO: 'US', code: 'SC', name: 'South Carolina', capital: 'Columbia' },
+  { id: 41, ISO: 'US', code: 'SD', name: 'South Dakota', capital: 'Pierre' },
+  { id: 42, ISO: 'US', code: 'TN', name: 'Tennessee', capital: 'Nashville' },
+  { id: 43, ISO: 'US', code: 'TX', name: 'Texas', capital: 'Austin' },
+  { id: 44, ISO: 'US', code: 'UT', name: 'Utah', capital: 'Salt Lake City' },
+  { id: 45, ISO: 'US', code: 'VT', name: 'Vermont', capital: 'Montpelier' },
+  { id: 46, ISO: 'US', code: 'VA', name: 'Virginia', capital: 'Richmond' },
+  { id: 47, ISO: 'US', code: 'WA', name: 'Washington', capital: 'Olympia' },
+  { id: 48, ISO: 'US', code: 'WV', name: 'West Virginia', capital: 'Charleston' },
+  { id: 49, ISO: 'US', code: 'WI', name: 'Wisconsin', capital: 'Madison' },
+  { id: 50, ISO: 'US', code: 'WY', name: 'Wyoming', capital: 'Cheyenne' },
+  
+  // Canadá
+  { id: 51, ISO: 'CA', code: 'ON', name: 'Ontario', capital: 'Toronto' },
+  { id: 52, ISO: 'CA', code: 'QC', name: 'Quebec', capital: 'Quebec City' },
+  { id: 53, ISO: 'CA', code: 'BC', name: 'British Columbia', capital: 'Victoria' },
+  { id: 54, ISO: 'CA', code: 'AB', name: 'Alberta', capital: 'Edmonton' },
+  
+  // México
+  { id: 55, ISO: 'MX', code: 'CMX', name: 'Ciudad de México', capital: 'Ciudad de México' },
+  { id: 56, ISO: 'MX', code: 'JAL', name: 'Jalisco', capital: 'Guadalajara' },
+  { id: 57, ISO: 'MX', code: 'NLE', name: 'Nuevo León', capital: 'Monterrey' },
+  
+  // Argentina
+  { id: 58, ISO: 'AR', code: 'BA', name: 'Buenos Aires', capital: 'La Plata' },
+  { id: 59, ISO: 'AR', code: 'CF', name: 'Capital Federal', capital: 'Buenos Aires' },
+  { id: 60, ISO: 'AR', code: 'CO', name: 'Córdoba', capital: 'Córdoba' }
+];
+
+// ============================================
+// ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/countries
+ * Returns all countries
+ */
+app.get('/api/countries', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: countriesData,
+      count: countriesData.length
+    });
+  } catch (error) {
+    console.error('Error fetching countries:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch countries' 
+    });
+  }
+});
+
+/**
+ * GET /api/countries/:countryCode/states
+ * Returns all states for a specific country
+ * @param countryCode - ISO 3166-1 alpha-2 country code (e.g., 'BR', 'US')
+ */
+app.get('/api/countries/:countryCode/states', (req, res) => {
+  try {
+    const countryCode = req.params.countryCode.toUpperCase();
+    
+    // Validate if country exists
+    const country = countriesData.find(c => c.code === countryCode);
+    
+    if (!country) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Country not found',
+        countryCode: countryCode
+      });
+    }
+    
+    // Get states for the country
+    const states = statesData.filter(s => s.ISO === countryCode);
+    
+    res.json({
+      success: true,
+      country: {
+        code: country.code,
+        name: country.name,
+        name_en: country.name_en
+      },
+      data: states,
+      count: states.length
+    });
+  } catch (error) {
+    console.error('Error fetching states:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch states' 
+    });
+  }
+});
+
 // =====================
 // UTILITY ENDPOINTS
 // =====================
