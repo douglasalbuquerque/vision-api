@@ -319,6 +319,165 @@ app.post('/api/prices/batch', (req, res) => {
   }
 });
 
+// Search for related part codes by description and optional customer part
+app.post('/api/parts/search2', (req, res) => {
+  try {
+    const { ERPId, companyId, customerPart, description, size } = req.body;
+
+    // Validate request
+    if (!ERPId || !companyId || !description) {
+      return res.status(400).json({ 
+        error: 'Invalid request. Required: ERPId, companyId, and description' 
+      });
+    }
+
+    // Get customer ID from code
+    const customerStmt = db.prepare(`
+      SELECT id FROM Customer WHERE id = ?
+    `);
+    const customer = customerStmt.get(companyId);
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const relatedCodes = [];
+
+    // Strategy 1: If customerPart is provided, try to find exact match first
+    if (customerPart) {
+      const exactMatchStmt = db.prepare(`
+        SELECT 
+          p.internal_code as internalCode,
+          pm.customer_code as customerCode,
+          p.description,
+          p.base_price as price,
+          COALESCE(pm.price_override, p.base_price) as customerPrice,
+          'exact_customer_code' as matchType
+        FROM PartMapping pm
+        JOIN Part p ON pm.part_id = p.id
+        WHERE pm.customer_code = ? 
+          AND pm.customer_id = ?
+        LIMIT 1
+      `);
+      const exactMatch = exactMatchStmt.get(customerPart, companyId);
+      
+      if (exactMatch) {
+        relatedCodes.push(exactMatch);
+      }
+    }
+
+    // Strategy 2: Search by description for this customer
+    // Using LIKE with wildcards for fuzzy matching
+    const descriptionWords = description.trim().split(/\s+/).filter(w => w.length > 2);
+    
+    if (descriptionWords.length > 0) {
+      // Build dynamic LIKE conditions for each word
+      const likeConditions = descriptionWords.map(() => 
+        'p.description LIKE ?'
+      ).join(' AND ');
+      
+      const likeParams = descriptionWords.map(word => `%${word}%`);
+      
+      const descSearchStmt = db.prepare(`
+        SELECT 
+          p.internal_code as internalCode,
+          pm.customer_code as customerCode,
+          p.description,
+          p.base_price as price,
+          COALESCE(pm.price_override, p.base_price) as customerPrice,
+          'description_match' as matchType
+        FROM Part p
+        JOIN PartMapping pm ON p.id = pm.part_id
+        WHERE pm.customer_id = ?
+          AND (${likeConditions})
+          ${customerPart ? 'AND pm.customer_code != ?' : ''}
+        ORDER BY 
+          LENGTH(p.description) ASC,
+          p.internal_code ASC
+        LIMIT 10
+      `);
+      
+      const params = [companyId, ...likeParams];
+      if (customerPart) {
+        params.push(customerPart);
+      }
+      
+      const descMatches = descSearchStmt.all(...params);
+      relatedCodes.push(...descMatches);
+    }
+
+    // Strategy 3: If size is provided, try to match parts with similar size in description
+    if (size && relatedCodes.length < 5) {
+      const sizeSearchStmt = db.prepare(`
+        SELECT 
+          p.internal_code as internalCode,
+          pm.customer_code as customerCode,
+          p.description,
+          p.base_price as price,
+          COALESCE(pm.price_override, p.base_price) as customerPrice,
+          'size_match' as matchType
+        FROM Part p
+        JOIN PartMapping pm ON p.id = pm.part_id
+        WHERE pm.customer_id = ?
+          AND p.description LIKE ?
+          ${customerPart ? 'AND pm.customer_code != ?' : ''}
+        ORDER BY p.internal_code ASC
+        LIMIT 5
+      `);
+      
+      const sizeParams = [companyId, `%${size}%`];
+      if (customerPart) {
+        sizeParams.push(customerPart);
+      }
+      
+      const sizeMatches = sizeSearchStmt.all(...sizeParams);
+      
+      // Add only unique codes not already in results
+      const existingCodes = new Set(relatedCodes.map(c => c.internalCode));
+      for (const match of sizeMatches) {
+        if (!existingCodes.has(match.internalCode)) {
+          relatedCodes.push(match);
+          existingCodes.add(match.internalCode);
+        }
+      }
+    }
+
+    // Remove duplicates based on internal code (keep first occurrence)
+    const uniqueCodes = [];
+    const seenCodes = new Set();
+    
+    for (const code of relatedCodes) {
+      if (!seenCodes.has(code.internalCode)) {
+        seenCodes.add(code.internalCode);
+        uniqueCodes.push({
+          internalCode: code.internalCode,
+          customerCode: code.customerCode,
+          description: code.description,
+          price: parseFloat(code.price?.toFixed(2) || 0),
+          customerPrice: parseFloat(code.customerPrice?.toFixed(2) || 0),
+          matchType: code.matchType
+        });
+      }
+    }
+
+    res.json({ 
+      searchParams: {
+        ERPId,
+        companyId,
+        customerPart: customerPart || null,
+        description,
+        size: size || null
+      },
+      totalResults: uniqueCodes.length,
+      relatedCodes: uniqueCodes
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to search for related codes' });
+  }
+});
+
 // Update part price
 app.patch('/api/parts/:partId/price', (req, res) => {
   try {
