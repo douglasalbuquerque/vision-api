@@ -61,22 +61,48 @@ function initDatabase() {
 // Create a new store
 app.post('/api/stores', (req, res) => {
   try {
-    const { customer_id, store_name, address, city, state, zip_code } = req.body;
+    const { 
+      customerid, 
+      firstname, 
+      lastname, 
+      email, 
+      company, 
+      storeNumber, 
+      address1, 
+      address2, 
+      city, 
+      state, 
+      lookup 
+    } = req.body;
     
-    if (!customer_id || !store_name) {
-      return res.status(400).json({ error: 'customer_id and store_name are required' });
+    // Validação dos campos obrigatórios
+    if (!customerid || !storeNumber) {
+      return res.status(400).json({ 
+        error: 'customerid and storeNumber are required' 
+      });
     }
 
+    // Persiste apenas os campos que existem na tabela atual
     const stmt = db.prepare(`
       INSERT INTO Store (customer_id, store_name, address, city, state, zip_code) 
       VALUES (?, ?, ?, ?, ?, ?)
     `);
     
-    const result = stmt.run(customer_id, store_name, address, city, state, zip_code);
+    // Mapeamento dos novos campos para os campos existentes na tabela
+    const result = stmt.run(
+      customerid,           // customer_id
+      company || '',        // store_name (usando company como nome da loja)
+      address1 || '',       // address
+      city || '',           // city
+      state || '',          // state
+      lookup || ''          // zip_code (usando lookup como código postal)
+    );
 
     res.status(201).json({
       message: 'Store created successfully',
-      store_id: result.lastInsertRowid
+      store_id: result.lastInsertRowid,
+      customerid: customerid,
+      storeNumber: storeNumber
     });
   } catch (error) {
     console.error(error);
