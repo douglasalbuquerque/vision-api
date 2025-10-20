@@ -63,6 +63,7 @@ app.post('/api/stores', (req, res) => {
   try {
     const { 
       customerId, 
+      erpid,
       firstName, 
       lastName, 
       email, 
