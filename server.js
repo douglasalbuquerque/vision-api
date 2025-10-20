@@ -91,7 +91,7 @@ app.post('/api/stores', (req, res) => {
     
     // Mapeamento dos novos campos para os campos existentes na tabela
     const result = stmt.run(
-      customerid,           // customer_id
+      customerId,           // customer_id
       companyName || '',        // store_name (usando company como nome da loja)
       addressLine1 || '',       // address
       city || '',           // city
