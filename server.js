@@ -77,7 +77,7 @@ app.post('/api/stores', (req, res) => {
     } = req.body;
     
     // Validação dos campos obrigatórios
-    if (!customerid || !storeNumber) {
+    if (!customerId || !storeNumber) {
       return res.status(400).json({ 
         error: 'customerid and storeNumber are required' 
       });
@@ -102,7 +102,7 @@ app.post('/api/stores', (req, res) => {
     res.status(201).json({
       message: 'Store created successfully',
       store_id: result.lastInsertRowid,
-      customerid: customerId,
+      customerId: customerId,
       storeNumber: storeNumber
     });
   } catch (error) {
