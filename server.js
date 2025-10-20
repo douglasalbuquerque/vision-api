@@ -102,7 +102,7 @@ app.post('/api/stores', (req, res) => {
     res.status(201).json({
       message: 'Store created successfully',
       store_id: result.lastInsertRowid,
-      customerid: customerid,
+      customerid: customerId,
       storeNumber: storeNumber
     });
   } catch (error) {
