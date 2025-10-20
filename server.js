@@ -62,17 +62,18 @@ function initDatabase() {
 app.post('/api/stores', (req, res) => {
   try {
     const { 
-      customerid, 
-      firstname, 
-      lastname, 
+      customerId, 
+      firstName, 
+      lastName, 
       email, 
-      company, 
+      companyName, 
       storeNumber, 
-      address1, 
-      address2, 
+      addressLine1, 
+      addressLine2,
+      country,  
       city, 
       state, 
-      lookup 
+      lookupHint 
     } = req.body;
     
     // Validação dos campos obrigatórios
@@ -91,11 +92,11 @@ app.post('/api/stores', (req, res) => {
     // Mapeamento dos novos campos para os campos existentes na tabela
     const result = stmt.run(
       customerid,           // customer_id
-      company || '',        // store_name (usando company como nome da loja)
-      address1 || '',       // address
+      companyName || '',        // store_name (usando company como nome da loja)
+      addressLine1 || '',       // address
       city || '',           // city
       state || '',          // state
-      lookup || ''          // zip_code (usando lookup como código postal)
+      lookupHint || ''          // zip_code (usando lookup como código postal)
     );
 
     res.status(201).json({
